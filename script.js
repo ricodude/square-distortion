@@ -37,9 +37,9 @@ function calculateResponsiveValues() {
         Math.min(screenSize / config.gridSize * 0.8, config.maxSquareSize)
     );
     
-    // Dramatically increased distortion values
-    config.maxDistortion = config.squareSize * 4; 
-    config.distortionRadius = Math.min(window.innerWidth, window.innerHeight) * 0.5; 
+    // Reduced distortion values for more subtle effect
+    config.maxDistortion = config.squareSize * 2.5; 
+    config.distortionRadius = Math.min(window.innerWidth, window.innerHeight) * 0.45; 
 }
 
 // Square class to manage individual squares
@@ -62,21 +62,21 @@ class Square {
         const dy = mouseY - this.baseY;
         const distance = Math.sqrt(dx * dx + dy * dy);
         
-        // Calculate distortion based on distance with increased effect
+        // Calculate distortion based on distance with more subtle effect
         const distortion = Math.max(0, 1 - distance / config.distortionRadius);
-        const distortionEffect = Math.pow(distortion, 0.6); 
+        const distortionEffect = Math.pow(distortion, 0.75); 
         
-        // Add wave effect to the distortion
+        // Add gentler wave effect
         const time = Date.now() * 0.001;
-        const wave = Math.sin(time + (this.row + this.col) * 0.2) * 0.2;
+        const wave = Math.sin(time + (this.row + this.col) * 0.2) * 0.15; 
         const enhancedDistortion = distortionEffect * (1 + wave);
         
-        // Apply smooth movement with increased expansion effect
+        // Apply smooth movement with gentler expansion effect
         const targetX = this.baseX - dx * enhancedDistortion * config.maxDistortion / (distance || 1);
         const targetY = this.baseY - dy * enhancedDistortion * config.maxDistortion / (distance || 1);
         
-        // Increased movement speed for more responsive distortion
-        const speed = config.speed * (1.5 + distortionEffect * 2); 
+        // Slightly reduced movement speed
+        const speed = config.speed * (1.2 + distortionEffect * 1.5); 
         
         this.x += (targetX - this.x) * speed;
         this.y += (targetY - this.y) * speed;
