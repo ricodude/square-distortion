@@ -10,7 +10,7 @@ const config = {
     speed: 0.1,           // Speed of the distortion effect
     minSquareSize: 20,    // Minimum square size for small screens
     maxSquareSize: 40,    // Maximum square size for large screens
-    maxPerspective: 0.3   // Maximum perspective angle (in radians)
+    magnification: 1.8    // Magnification factor for hover effect
 };
 
 // Color palette
@@ -37,8 +37,8 @@ function calculateResponsiveValues() {
         Math.min(screenSize / config.gridSize * 0.8, config.maxSquareSize)
     );
     
-    config.maxDistortion = config.squareSize * 1.2;
-    config.distortionRadius = Math.min(window.innerWidth, window.innerHeight) * 0.35;
+    config.maxDistortion = config.squareSize * 1.5;
+    config.distortionRadius = Math.min(window.innerWidth, window.innerHeight) * 0.25;
 }
 
 // Square class to manage individual squares
@@ -48,9 +48,9 @@ class Square {
         this.baseY = y;
         this.x = x;
         this.y = y;
-        this.perspectiveX = 0;
-        this.perspectiveY = 0;
-        this.rotation = 0;
+        this.row = row;
+        this.col = col;
+        this.scale = 1;
         const colorIndex = (row + col) % colors.length;
         this.color = colors[colorIndex];
     }
@@ -62,56 +62,19 @@ class Square {
         
         // Calculate distortion based on distance
         const distortion = Math.max(0, 1 - distance / config.distortionRadius);
-        const distortionEffect = Math.pow(distortion, 0.85);
+        const distortionEffect = Math.pow(distortion, 0.75);
         
-        // Calculate perspective angles based on mouse position
-        const angleX = (dy / config.distortionRadius) * config.maxPerspective * distortionEffect;
-        const angleY = (dx / config.distortionRadius) * config.maxPerspective * distortionEffect;
+        // Calculate magnification effect
+        const targetScale = 1 + (config.magnification - 1) * distortionEffect;
+        this.scale += (targetScale - this.scale) * config.speed;
         
-        // Smooth transitions for perspective
-        this.perspectiveX += (angleX - this.perspectiveX) * config.speed;
-        this.perspectiveY += (angleY - this.perspectiveY) * config.speed;
-        
-        // Calculate position with subtle movement
-        const moveX = dx * distortionEffect * 0.2;
-        const moveY = dy * distortionEffect * 0.2;
+        // Calculate position with magnification offset
+        const scaleDiff = (this.scale - 1) * config.squareSize * 0.5;
+        const moveX = dx * distortionEffect * 0.3 - scaleDiff;
+        const moveY = dy * distortionEffect * 0.3 - scaleDiff;
         
         this.x += (this.baseX + moveX - this.x) * config.speed;
         this.y += (this.baseY + moveY - this.y) * config.speed;
-        
-        // Calculate rotation based on mouse movement
-        const targetRotation = Math.atan2(dy, dx) * distortionEffect * 0.2;
-        this.rotation += (targetRotation - this.rotation) * config.speed;
-    }
-
-    draw() {
-        ctx.save();
-        
-        // Move to square center
-        ctx.translate(this.x + config.squareSize / 2, this.y + config.squareSize / 2);
-        
-        // Apply perspective rotation
-        ctx.transform(
-            Math.cos(this.perspectiveY), Math.sin(this.perspectiveX),
-            Math.sin(this.perspectiveY), Math.cos(this.perspectiveX),
-            0, 0
-        );
-        
-        // Apply rotation
-        ctx.rotate(this.rotation);
-        
-        // Draw square
-        ctx.fillStyle = this.color;
-        ctx.fillRect(-config.squareSize / 2, -config.squareSize / 2, 
-                    config.squareSize, config.squareSize);
-        
-        // Add subtle shading based on perspective
-        const shade = Math.abs(this.perspectiveX + this.perspectiveY) / (config.maxPerspective * 2);
-        ctx.fillStyle = `rgba(0,0,0,${shade * 0.3})`;
-        ctx.fillRect(-config.squareSize / 2, -config.squareSize / 2, 
-                    config.squareSize, config.squareSize);
-        
-        ctx.restore();
     }
 }
 
@@ -130,16 +93,60 @@ function initializeSquares() {
     }
 }
 
-// Animation loop
-function animate() {
+// Draw the connected grid
+function drawGrid() {
     ctx.fillStyle = '#1a1a1a';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    squares.forEach(square => {
-        square.update();
-        square.draw();
-    });
-    
+
+    // Draw filled polygons between squares
+    for (let row = 0; row < config.gridSize - 1; row++) {
+        for (let col = 0; col < config.gridSize - 1; col++) {
+            const square = squares[row * config.gridSize + col];
+            const rightSquare = squares[row * config.gridSize + col + 1];
+            const bottomSquare = squares[(row + 1) * config.gridSize + col];
+            const bottomRightSquare = squares[(row + 1) * config.gridSize + col + 1];
+
+            // Calculate scaled positions for each corner
+            const x1 = square.x + (config.squareSize * (square.scale - 1) / 2);
+            const y1 = square.y + (config.squareSize * (square.scale - 1) / 2);
+            const x2 = rightSquare.x + config.squareSize * rightSquare.scale - (config.squareSize * (rightSquare.scale - 1) / 2);
+            const y2 = rightSquare.y + (config.squareSize * (rightSquare.scale - 1) / 2);
+            const x3 = bottomRightSquare.x + config.squareSize * bottomRightSquare.scale - (config.squareSize * (bottomRightSquare.scale - 1) / 2);
+            const y3 = bottomRightSquare.y + config.squareSize * bottomRightSquare.scale - (config.squareSize * (bottomRightSquare.scale - 1) / 2);
+            const x4 = bottomSquare.x + (config.squareSize * (bottomSquare.scale - 1) / 2);
+            const y4 = bottomSquare.y + config.squareSize * bottomSquare.scale - (config.squareSize * (bottomSquare.scale - 1) / 2);
+
+            // Draw the quad
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.lineTo(x3, y3);
+            ctx.lineTo(x4, y4);
+            ctx.closePath();
+
+            // Create gradient
+            const gradient = ctx.createLinearGradient(x1, y1, x3, y3);
+            gradient.addColorStop(0, square.color);
+            gradient.addColorStop(0.5, rightSquare.color);
+            gradient.addColorStop(0.5, bottomSquare.color);
+            gradient.addColorStop(1, bottomRightSquare.color);
+            
+            ctx.fillStyle = gradient;
+            ctx.fill();
+
+            // Add subtle highlight based on distortion
+            const avgScale = (square.scale + rightSquare.scale + bottomSquare.scale + bottomRightSquare.scale) / 4;
+            const highlight = Math.min(0.3, (avgScale - 1) * 0.5);
+            ctx.fillStyle = `rgba(255,255,255,${highlight})`;
+            ctx.fill();
+        }
+    }
+}
+
+// Animation loop
+function animate() {
+    squares.forEach(square => square.update());
+    drawGrid();
     requestAnimationFrame(animate);
 }
 
