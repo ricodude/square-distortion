@@ -3,7 +3,7 @@
 A visual web experiment that creates an interactive square distortion effect using HTML Canvas and JavaScript.
 
 ## Live Demo
-Once deployed, the live demo will be available at: https://[your-username].github.io/square-distortion
+Once deployed, the live demo will be available at: https://ricodude.github.io/square-distortion
 
 ## Running Locally
 1. Clone this repository
