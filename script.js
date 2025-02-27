@@ -3,11 +3,13 @@ const ctx = canvas.getContext('2d');
 
 // Configuration
 const config = {
-    gridSize: 15,          // Number of squares in each row/column
-    squareSize: 40,        // Base size of each square
-    maxDistortion: 40,     // Maximum distance squares can move
-    distortionRadius: 200, // How far from the cursor the distortion affects
-    speed: 0.1            // Speed of the distortion effect
+    gridSize: 12,          // Reduced number of squares for better mobile performance
+    squareSize: null,      // Will be calculated based on screen size
+    maxDistortion: null,   // Will be calculated based on screen size
+    distortionRadius: null,// Will be calculated based on screen size
+    speed: 0.1,           // Speed of the distortion effect
+    minSquareSize: 20,    // Minimum square size for small screens
+    maxSquareSize: 40     // Maximum square size for large screens
 };
 
 // Color palette
@@ -20,9 +22,25 @@ const colors = [
     '#3498DB'  // Light blue
 ];
 
-let mouseX = 0;
-let mouseY = 0;
+let mouseX = window.innerWidth / 2;
+let mouseY = window.innerHeight / 2;
 let squares = [];
+let isTouch = false;
+
+// Calculate responsive values based on screen size
+function calculateResponsiveValues() {
+    const screenSize = Math.min(window.innerWidth, window.innerHeight);
+    
+    // Calculate square size based on screen size
+    config.squareSize = Math.max(
+        config.minSquareSize,
+        Math.min(screenSize / config.gridSize * 0.8, config.maxSquareSize)
+    );
+    
+    // Adjust other values based on screen size
+    config.maxDistortion = config.squareSize * 0.8;
+    config.distortionRadius = Math.min(window.innerWidth, window.innerHeight) * 0.3;
+}
 
 // Square class to manage individual squares
 class Square {
@@ -160,23 +178,51 @@ function animate() {
 function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
+    calculateResponsiveValues();
     initializeSquares();
 }
 
 // Event listeners
 window.addEventListener('resize', resizeCanvas);
 window.addEventListener('mousemove', (e) => {
-    mouseX = e.clientX;
-    mouseY = e.clientY;
+    if (!isTouch) { // Only update if not using touch
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+    }
 });
 
-// Touch support
+// Improved touch support
+window.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    isTouch = true;
+    mouseX = e.touches[0].clientX;
+    mouseY = e.touches[0].clientY;
+}, { passive: false });
+
 window.addEventListener('touchmove', (e) => {
     e.preventDefault();
     mouseX = e.touches[0].clientX;
     mouseY = e.touches[0].clientY;
 }, { passive: false });
 
+window.addEventListener('touchend', () => {
+    // Gradually return to center when touch ends
+    const animate = () => {
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+        mouseX += (centerX - mouseX) * 0.05;
+        mouseY += (centerY - mouseY) * 0.05;
+        
+        if (Math.abs(centerX - mouseX) > 0.1 || Math.abs(centerY - mouseY) > 0.1) {
+            requestAnimationFrame(animate);
+        } else {
+            isTouch = false;
+        }
+    };
+    animate();
+});
+
 // Initialize
+calculateResponsiveValues();
 resizeCanvas();
 animate();
