@@ -37,9 +37,9 @@ function calculateResponsiveValues() {
         Math.min(screenSize / config.gridSize * 0.8, config.maxSquareSize)
     );
     
-    // Adjust other values based on screen size
-    config.maxDistortion = config.squareSize * 0.8;
-    config.distortionRadius = Math.min(window.innerWidth, window.innerHeight) * 0.3;
+    // Increased distortion values
+    config.maxDistortion = config.squareSize * 2; 
+    config.distortionRadius = Math.min(window.innerWidth, window.innerHeight) * 0.4; 
 }
 
 // Square class to manage individual squares
@@ -62,15 +62,19 @@ class Square {
         const dy = mouseY - this.baseY;
         const distance = Math.sqrt(dx * dx + dy * dy);
         
-        // Calculate distortion based on distance
+        // Calculate distortion based on distance with increased effect
         const distortion = Math.max(0, 1 - distance / config.distortionRadius);
+        const distortionEffect = Math.pow(distortion, 0.8); 
         
-        // Apply smooth movement with expansion effect
-        const targetX = this.baseX - dx * distortion * config.maxDistortion / (distance || 1);
-        const targetY = this.baseY - dy * distortion * config.maxDistortion / (distance || 1);
+        // Apply smooth movement with increased expansion effect
+        const targetX = this.baseX - dx * distortionEffect * config.maxDistortion / (distance || 1);
+        const targetY = this.baseY - dy * distortionEffect * config.maxDistortion / (distance || 1);
         
-        this.x += (targetX - this.x) * config.speed;
-        this.y += (targetY - this.y) * config.speed;
+        // Increased movement speed for more responsive distortion
+        const speed = config.speed * (1 + distortionEffect); 
+        
+        this.x += (targetX - this.x) * speed;
+        this.y += (targetY - this.y) * speed;
     }
 }
 
